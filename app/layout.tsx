@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
+import LocalState from '@/components/LocalState';
 import './global.css';
 
 export const metadata: Metadata = {
@@ -43,6 +44,7 @@ export default function RootLayout({
                             <li><Link href="/about">O nas</Link></li>
                         </ul>
                     </nav>
+                    <LocalState />
                 </header>
                 <main style={{ padding: '2rem' }}>
                     {children}

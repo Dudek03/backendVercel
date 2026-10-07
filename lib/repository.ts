@@ -29,6 +29,7 @@ export const getProducts = async (
   availability?: "available" | "unavailable",
   category?: Product["type"],
 ): Promise<Product[]> => {
+    await new Promise(resolve => setTimeout(resolve, 2000));
   let result = [...products];
 
   if (availability === "available") {
