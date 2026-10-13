@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
+import Navigation from '@/components/Navigation';
 import LocalState from '@/components/LocalState';
 import './global.css';
 
@@ -17,13 +18,7 @@ export default function RootLayout({
     return (
         <html lang="pl">
             <body>
-                <header style={{
-                    padding: '1rem',
-                    borderBottom: '1px solid #ccc',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '2rem'
-                }}>
+                <header className="p-4 border-b flex items-center gap-8">
                     <Link href="/">
                         <Image
                             src="/politechnika-krakowska-logo.svg"
@@ -35,15 +30,7 @@ export default function RootLayout({
                         />
                     </Link>
 
-                    <nav>
-                        <ul style={{ display: 'flex', gap: '1rem', listStyle: 'none', margin: 0, padding: 0 }}>
-                            <li><Link href="/">Strona Główna</Link></li>
-                            <li><Link href="/product-list">Katalog Produktów</Link></li>
-                            <li><Link href="/basket">Koszyk</Link></li>
-                            <li><Link href="/order-history">Historia Zamówień</Link></li>
-                            <li><Link href="/about">O nas</Link></li>
-                        </ul>
-                    </nav>
+                    <Navigation />
                     <LocalState />
                 </header>
                 <main style={{ padding: '2rem' }}>

@@ -25,28 +25,23 @@ const products: Product[] = productsData as Product[];
 validateProducts(products);
 
 export const getProducts = async (
-  sortBy: "name" | "date" = "name",
-  availability?: "available" | "unavailable",
-  category?: Product["type"],
+  sortBy: "name" | "newest" = "name",
+  stock: "all" | "available" | "unavailable" = "all",
+  category: "all" | string = "all",
 ): Promise<Product[]> => {
-    await new Promise(resolve => setTimeout(resolve, 2000));
   let result = [...products];
 
-  if (availability === "available") {
-    result = result.filter((p) => p.amount > 0);
-  } else if (availability === "unavailable") {
-    result = result.filter((p) => p.amount === 0);
-  }
-
-  if (category) {
-    result = result.filter((p) => p.type === category);
-  }
+  if (stock === "available") result = result.filter((p) => p.amount > 0);
+  if (stock === "unavailable") result = result.filter((p) => p.amount === 0);
+  if (category !== "all") result = result.filter((p) => p.type === category);
 
   result.sort((a, b) => {
-    if (sortBy === "name") {
-      return a.name.localeCompare(b.name);
+    if (sortBy === "newest") {
+      const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
+      return dateDiff !== 0 ? dateDiff : a.id - b.id; // remis po ID
     }
-    return new Date(b.date).getTime() - new Date(a.date).getTime();
+    const nameDiff = a.name.localeCompare(b.name);
+    return nameDiff !== 0 ? nameDiff : a.id - b.id; // remis po ID
   });
 
   return result;
