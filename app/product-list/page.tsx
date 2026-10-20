@@ -1,21 +1,29 @@
 import { getProducts } from '@/lib/repository';
+import Filters from '@/components/Filters';
+import { parseCatalogParams } from '@/lib/validators';
 import ProductTile from '@/components/ProductTile';
 
-export default async function ProductListPage() {
-    const products = await getProducts('name');
+export default async function ProductListPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+    const params = await searchParams;
+    const { type, stock, sort, isTypeInvalid } = parseCatalogParams(params)
 
-    if (products.length === 0) {
-        return <p>Katalog jest obecnie pusty. Brak produktów do wyświetlenia.</p>;
-    }
+    const products = await getProducts(sort, stock, type);
 
     return (
         <div>
-            <h1>Katalog Produktów</h1>
-            <ul style={{ display: 'grid', gap: '1.5rem', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', listStyle: 'none', padding: 0 }}>
-                {products.map((product) => (
-                    <ProductTile key={product.id} product={product} />
-                ))}
-            </ul>
+            <Filters />
+            {isTypeInvalid && <p className="text-red-500">Pominięto błędny parametr kategorii.</p>}
+            {products.length === 0 ? (
+                <p>Brak wyników spełniających kryteria.</p>
+            ) : (
+                <ul className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {products.map(p => (
+                        <li key={p.id} className="border p-4 rounded">
+                            <ProductTile product={p} />
+                        </li>
+                    ))}
+                </ul>
+            )}
         </div>
     );
 }

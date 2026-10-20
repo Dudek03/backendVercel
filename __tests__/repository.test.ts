@@ -18,7 +18,7 @@ describe("Funkcje repozytorium", () => {
   });
 
   it("powinno sortować po dacie malejąco", async () => {
-    const products = await getProducts("date");
+    const products = await getProducts("newest", "all", "all");
     const date1 = new Date(products[0].date).getTime();
     const date2 = new Date(products[1].date).getTime();
     expect(date1).toBeGreaterThanOrEqual(date2);

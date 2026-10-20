@@ -78,3 +78,40 @@ Zdjęcia produktów umieszczone w katalogu `public/images/products/` pochodzą z
 
 **Prawo wykorzystania:** 
 Wszystkie powyższe zdjęcia udostępniane są na licencji Pexels, co oznacza, że są w pełni darmowe do użytku osobistego i niekomercyjnego.
+
+
+## Lab 07 - Trasy dynamiczne i filtry w Next.js
+
+### Odpowiedzi na pytania "Do wyjaśnienia"
+1. **Czym różnią się błędny format ID, brak produktu i awaria?** Błędny format
+   (np. `12abc`) narusza kontrakt walidacyjny (odsyłamy 404 bez pytania bazy).
+   Brak produktu oznacza poprawne logicznie ID, którego baza nie znalazła.
+   Awaria to nieoczekiwany wyjątek (np. błąd połączenia), który musi wyrzucić
+   status 500 lub obsługę w `error.tsx`, aby nie udawać, że produkt celowo
+   zniknął z oferty.
+2. **Dlaczego folder [id] nie oznacza, że strona zawsze renderuje się przy
+   żądaniu?** Z użyciem `generateStaticParams` możemy wymusić prerenderowanie
+   stron w momencie kompilacji (SSG), co udowodniono w Rozszerzeniu 4. 
+3. **Dlaczego walidujemy adres mimo kontrolek ograniczających wybór?** URL jest
+   zewnętrznym interfejsem aplikacji (API). Użytkownik może ręcznie edytować
+   URL, wkleić stary link lub podać złośliwe parametry, pomijając całkowicie
+   nasze kontrolki.
+4. **Dlaczego filtr w useState nie odtwarza widoku z udostępnionego linku?**
+   `useState` żyje tylko w pamięci aktualnej sesji przeglądarki. Wysłany link
+   nie niesie ze sobą stanu pamięci RAM z innego komputera, dlatego jedynym
+   źródłem prawdy do odtwarzania (tzw. Deep Linking) musi być URL.
+5. **Co zachowuje nawigacja przez Link, a co pełne przeładowanie?** Link
+   zachowuje strukturę React (Layouty), stany (np. Context, useState) oraz nie
+   pobiera od zera skryptów z serwera (robi łagodne przejście). Pełne
+   przeładowanie odświeża całą kartę niszcząc lokalne stany.
+6. **Dlaczego komponent z `use client` otrzymuje początkowy HTML z serwera?**
+   Next.js dokonuje prerenderowania SSR także dla komponentów klienckich, aby
+   użytkownik szybciej zobaczył zawartość przed pobraniem JavaScriptu.
+   Następnie zachodzi zjawisko "hydracji".
+
+### Rozszerzenia (WSZYSTKIE)
+- **Parallel Routes (@recommended):** Dodano boczny panel 3 produktów. Zdefiniowano pliki `default.tsx`, ponieważ przy pełnym odświeżeniu i zmianie URL na szczegóły produktu Next.js musi wiedzieć, co renderować w nieaktywnych slotach.
+- **Intercepting Routes (@modal):** Kliknięcie zdjęcia produktu wyzwala ścieżkę przechwytującą `(..)img/[id]`, ładując zoptymalizowany podgląd zdjęcia bez gubienia tła. Odświeżenie przenosi nas na samodzielną podstronę ze zdjęciem.
+- **Dynamic Catch-all (`[[...slug]]`):** W sekcji `/catalog` zaprezentowano różnicę dla tablicy ścieżek URL, reagując dynamicznie na wejścia np. `/catalog/gpu/25`.
+- **generateStaticParams:** Wygenerowano prerenderowany HTML w trakcie builda dla identyfikatorów 1, 2, 3.
+- **Tailwind CSS v4:** Wdrożono nową konfigurację i ostylowano katalog nowymi klasami Tailwind, zachowując bezwzględnie zasady dostępności, layoutu i RWD.

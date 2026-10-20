@@ -10,10 +10,13 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
     "next": "16.3.8",
+    "postcss": "^8.5.30",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "server-only": "^0.0.1"
+    "server-only": "^0.0.1",
+    "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
     "@types/node": "^24.19.1",
