@@ -4,7 +4,10 @@ import { validateId, parseCatalogParams } from "../lib/validators";
 import { getProducts } from "../lib/repository";
 import productsData from "../lib/data.json";
 
-// Obejście dla Vitest i Server Components (z Lab 06)
+vi.mock("next/server", () => ({
+  connection: vi.fn().mockResolvedValue(true),
+}));
+
 vi.mock("server-only", () => ({}));
 
 describe("Interpretacja parametrów URL", () => {

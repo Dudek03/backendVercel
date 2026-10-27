@@ -10,8 +10,12 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1",
     "@tailwindcss/postcss": "^4.3.3",
+    "dotenv": "18.0.8",
     "next": "16.3.8",
+    "pg": "8.23.1",
     "postcss": "^8.5.30",
     "react": "19.2.8",
     "react-dom": "19.2.8",
@@ -19,11 +23,15 @@
     "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
+    "@prisma/config": "7.10.1",
     "@types/node": "^24.19.1",
+    "@types/pg": "8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.8",
+    "prisma": "7.10.1",
+    "tsx": "4.23.15",
     "typescript": "^5",
     "vitest": "^5.0.3"
   }
