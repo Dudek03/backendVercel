@@ -1,7 +1,6 @@
 generator client {
-  provider        = "prisma-client-js"
-  output          = "../lib/generated/prisma/client"
-  previewFeatures = ["driverAdapters"]
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
 }
 
 datasource db {
@@ -30,22 +29,66 @@ model Product {
   cartItems   CartItem[]
   orderItems  OrderItem[]
 
-  // Rozszerzenie 3: Indeks
   @@index([categoryId, amount])
 }
 
-// Rozszerzenie 1: Model Koszyka i Użytkownika
 model User {
   id            String    @id
   name          String
   email         String    @unique
-  emailVerified Boolean
+  emailVerified Boolean   @default(false)
   image         String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  sessions      Session[]
+  accounts      Account[]
   cart          Cart?
   orders        Order[]
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
 }
 
 model Cart {
@@ -66,15 +109,16 @@ model CartItem {
   @@unique([cartId, productId])
 }
 
-// Rozszerzenie 2: Historia zamówień
 model Order {
-  id        String      @id @default(uuid())
-  number    String      @unique
-  status    String
-  userId    String
-  user      User        @relation(fields: [userId], references: [id], onDelete: Restrict)
-  items     OrderItem[]
-  createdAt DateTime    @default(now())
+  id             String      @id @default(uuid())
+  number         String      @unique
+  status         String
+  userId         String
+  user           User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  idempotencyKey String?     @unique
+  totalAmount    Int         @default(0)
+  items          OrderItem[]
+  createdAt      DateTime    @default(now())
 }
 
 model OrderItem {
