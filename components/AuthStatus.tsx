@@ -9,6 +9,7 @@ export default function AuthStatus() {
   const router = useRouter();
   const { data: session, isPending } = useSession();
   const [loading, setLoading] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   if (isPending) {
     return <span className="text-sm text-gray-500">Sprawdzanie sesji...</span>;
@@ -17,13 +18,14 @@ export default function AuthStatus() {
   if (session?.user) {
     return (
       <div className="flex items-center gap-3 ml-auto">
-        {session.user.image ? (
+        {session.user.image && !imageError ? (
           <Image
             src={session.user.image}
             alt={session.user.name || "Awatar"}
             width={32}
             height={32}
             className="rounded-full border"
+            onError={() => setImageError(true)}
           />
         ) : (
           <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-sm">
