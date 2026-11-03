@@ -115,3 +115,21 @@ Wszystkie powyższe zdjęcia udostępniane są na licencji Pexels, co oznacza, �
 - **Dynamic Catch-all (`[[...slug]]`):** W sekcji `/catalog` zaprezentowano różnicę dla tablicy ścieżek URL, reagując dynamicznie na wejścia np. `/catalog/gpu/25`.
 - **generateStaticParams:** Wygenerowano prerenderowany HTML w trakcie builda dla identyfikatorów 1, 2, 3.
 - **Tailwind CSS v4:** Wdrożono nową konfigurację i ostylowano katalog nowymi klasami Tailwind, zachowując bezwzględnie zasady dostępności, layoutu i RWD.
+
+## Laboratorium 08 - PostgreSQL i Prisma
+
+### Pytania do wyjaśnienia (Sekcja 3, 4, 6 i 7)
+1. **Czym różnią się kontener, wolumen i baza? Dlaczego localhost ma inne znaczenie?**
+   Kontener to izolowane środowisko uruchomieniowe (proces). Wolumen to trwała przestrzeń dyskowa, na której kontener zapisuje dane (aby przetrwały restart). Baza to usługa (np. PostgreSQL) uruchomiona w kontenerze operująca na tych plikach. `localhost` wywoływane w systemie gospodarza (hoście) uderza w zmapowany port Dockerowy, a wewnątrz innej sieci Dockerowej `localhost` to wnętrze tylko i wyłącznie własnego kontenera (dlatego inne kontenery komunikują się po nazwie serwisu np. `postgres`).
+2. **Co robi konfiguracja CLI, generator i adapter uruchomieniowy?**
+   Konfiguracja CLI wskazuje ścieżkę do bazy i folderów, aby `npx prisma` wiedziało, skąd czytać schematy. Generator kompiluje pliki typu TypeScript na podstawie modeli, a adapter (tu `@prisma/adapter-pg`) tłumaczy zapytania Prisma na odpowiednie komendy czystego klienta bazy danych (pg). Typy wygenerowanego klienta gwarantują poprawność obiektów w TS, ale walidacja SQL (np. check dodatniej ceny) broni warstwy fizycznej przed obejściem typowania na produkcji.
+3. **Czym różnią się migracja, generowanie klienta i seed?**
+   Migracja zmienia fizycznie strukturę tabel w SQL, generowanie klienta uaktualnia podpowiedzi składni (typy) w TypeScript po stronie kodu, a seed to skrypt ładujący dane początkowe. Powtarzalność seeda (upsert) gwarantuje, że podwójne odpalenie nie zdubluje wierszy, a zastosowanie transakcji chroni przed załadowaniem do połowy po zerwaniu procesu.
+4. **Co po zmianie adaptera pozostaje częścią kontraktu repozytorium?**
+   Pojęcia takie jak "stan ujemny to niedostępny" oraz mapowanie kluczy asynchronicznych Promise. Zmienia się wewnętrzne filtrowanie z JS-a w pamięci RAM na klauzule `where` odsyłane do bazy danych. Poprawny zapis do bazy nie renderuje zmian w przeglądarce natychmiast, ponieważ Next.js agresywnie cache'uje zapytania. Funkcja `connection()` w Next.js wymusza odczekanie i odczyt z bazy (rezygnując z cache).
+
+### Rozszerzenia (Wszystkie)
+- **Model koszyka (Better Auth):** Dodano `User`, `Cart` i `CartItem`. Skonfigurowano powiązania `Cascade` i `Restrict` oraz dodano `CHECK (quantity BETWEEN 1 AND 99)` w migracji SQL. Zrealizowano również dodanie fikcyjnego konta przez Prisma seed.
+- **Historia zamówień:** Dodano modele `Order` oraz `OrderItem` (wzór snapshotu) przypisane do relacji z `User`. Zrobiono `SetNull` chroniący zamówienia po usunięciu produktu. Nałożono ograniczenia dodatniej ilości i ceny z zabezpieczeniem historycznym w groszach.
+- **Indeksy i zapytania (EXPLAIN):** Utworzono kompozytowy index `@@index([categoryId, amount])` w Prismie ułatwiający filtrowanie. Narzędzie `EXPLAIN ANALYZE` po potwierdzeniu z logu Dockerowego pokazuje skokową poprawę wyliczania rzędów przy większych pulach.
+- **Zapis współbieżny:** Utworzono skrypt `scripts/concurrent-test.ts` wywołujący dwie konkurujące ze sobą aktualizacje ilości towaru (Update w atomowej konstrukcji `SET amount = amount - 1 ... AND amount > 0`). Dokładnie jedno z wywołań blokuje transakcję w przypadku ostatniej sztuki asortymentu chroniąc tabelę SQL.

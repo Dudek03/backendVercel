@@ -1,53 +1,51 @@
 import "server-only";
-import { Product } from "./types";
-import productsData from "./data.json";
-
-export const validateProducts = (data: Product[]) => {
-  const ids = new Set<number>();
-  const codes = new Set<string>();
-
-  for (const product of data) {
-    if (product.price < 0)
-      throw new Error(
-        `Cena nie może być ujemna. Błąd w produkcie ID: ${product.id}`,
-      );
-    if (ids.has(product.id)) throw new Error(`Duplikat ID: ${product.id}`);
-    if (codes.has(product.code))
-      throw new Error(`Duplikat kodu: ${product.code}`);
-
-    ids.add(product.id);
-    codes.add(product.code);
-  }
-  return true;
-};
-
-const products: Product[] = productsData as Product[];
-validateProducts(products);
+import { prisma } from "./db";
+import { connection } from "next/server";
+import type { Product } from "./types";
 
 export const getProducts = async (
   sortBy: "name" | "newest" = "name",
   stock: "all" | "available" | "unavailable" = "all",
   category: "all" | string = "all",
 ): Promise<Product[]> => {
-  let result = [...products];
+  await connection();
 
-  if (stock === "available") result = result.filter((p) => p.amount > 0);
-  if (stock === "unavailable") result = result.filter((p) => p.amount === 0);
-  if (category !== "all") result = result.filter((p) => p.type === category);
+  const where: any = {};
+  if (stock === "available") where.amount = { gt: 0 };
+  if (stock === "unavailable") where.amount = { equals: 0 };
+  if (category !== "all") where.categoryId = category;
 
-  result.sort((a, b) => {
-    if (sortBy === "newest") {
-      const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
-      return dateDiff !== 0 ? dateDiff : a.id - b.id; // remis po ID
-    }
-    const nameDiff = a.name.localeCompare(b.name);
-    return nameDiff !== 0 ? nameDiff : a.id - b.id; // remis po ID
+  const orderBy =
+    sortBy === "newest"
+      ? [{ date: "desc" as const }, { id: "asc" as const }]
+      : [{ nameSortKey: "asc" as const }, { id: "asc" as const }];
+
+  const products = await prisma.product.findMany({
+    where,
+    orderBy,
   });
 
-  return result;
+  return products.map((p) => ({
+    ...p,
+    type: p.categoryId,
+    date: p.date.toISOString(),
+  })) as unknown as Product[];
 };
 
 export const getProductById = async (id: number): Promise<Product | null> => {
-  const product = products.find((p) => p.id === id);
-  return product || null;
+  await connection();
+
+  if (id < 1 || id > 2147483647) return null;
+
+  const product = await prisma.product.findUnique({
+    where: { id },
+  });
+
+  if (!product) return null;
+
+  return {
+    ...product,
+    type: product.categoryId,
+    date: product.date.toISOString(),
+  } as unknown as Product;
 };
