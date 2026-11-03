@@ -263,7 +263,7 @@ async function main() {
         },
       });
     }
-  });
+  }, { maxWait: 20000, timeout: 90000 });
 
   console.log("Seedowanie zakończone pomyślnie (4 kategorie, 100 produktów, 2 użytkowników, 4 deterministyczne zamówienia).");
 }

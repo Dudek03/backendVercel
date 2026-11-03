@@ -1,0 +1,68 @@
+name: CI / CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - lab10
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test-and-build:
+    name: Lint, Test & Build (Node.js 24 + PostgreSQL 17)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: root
+          POSTGRES_PASSWORD: rootpassword
+          POSTGRES_DB: ci_testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: "postgresql://root:rootpassword@localhost:5432/ci_testdb?schema=public"
+      BETTER_AUTH_SECRET: "ci_test_secret_must_be_at_least_32_characters_long_entropy_123"
+      BETTER_AUTH_URL: "http://localhost:3000"
+      GITHUB_CLIENT_ID: "mock_ci_client_id"
+      GITHUB_CLIENT_SECRET: "mock_ci_client_secret"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 24.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "npm"
+
+      - name: Install dependencies (clean checkout)
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx --no-install prisma generate
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Apply Prisma Migrations to CI test database
+        run: npx --no-install prisma migrate deploy
+
+      - name: Seed CI test database
+        run: npx --no-install prisma db seed
+
+      - name: Run Test Suite (Vitest)
+        run: npm run test
+
+      - name: Build Application (Next.js 16)
+        run: npm run build
