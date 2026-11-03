@@ -1,135 +1,225 @@
-# Sklep Komputerowy - Lab 06 (Programowanie BackEnd)
+# Sklep Komputerowy - Programowanie BackEnd
+**Politechnika Krakowska – Wydział Mechaniczny – Katedra Informatyki Stosowanej M-7**
 
-## Uruchomienie projektu
-1. Wygenerowanie danych: `node scripts/generate-data.js`
-2. Instalacja zależności: `npm ci`
-3. Budowanie wersji produkcyjnej: `npm run build`
-4. Uruchomienie: `npm run start`
-
-## Środowisko
-- **Node.js:** v24.x LTS
-- **Next.js:** 16.3.8
-- **TypeScript, App Router, ESLint**
-
-## Wynik sprawdzeń i testów
-Testy z wykorzystaniem `Vitest` uruchamiane za pomocą `npm run test` kończą się sukcesem. 
-- Sprawdzono sortowanie, filtrowanie, zachowanie dla braku ID.
-- Walidator poprawnie odrzuca ujemne ceny oraz duplikaty ID/Kodów.
-- Aplikacja w wersji produkcyjnej zachowuje poprawnie obsługę strony 404, koszyka i prawidłowo ładuje komponent ze zdjęciami.
-
-## Źródła danych i zasobów
-- Obrazki użyte w `public/images/products/` pochodzą z [wpisz stronę np. Unsplash/Pixabay] i mają licencję darmową do użytku niekomercyjnego.
+Projekt aplikacji sklepu komputerowego rozwijany w ramach laboratoriów:
+* **Lab 06:** Komponenty, model danych, SSR i optymalizacja obrazów
+* **Lab 07:** Trasy dynamiczne, filtry URL i routing równoległy / przechwytujący
+* **Lab 08:** Baza PostgreSQL 17, Prisma ORM 7, migracje, ograniczenia SQL CHECK, Collate "C", benchmark EXPLAIN i zapis współbieżny
+* **Lab 09:** Uwierzytelnianie GitHub OAuth (Better Auth), sesje w bazie danych, autoryzacja koszyka, transakcyjny checkout i historia zamówień
 
 ---
 
-## Odpowiedzi na pytania architektoniczne:
+## 1. Środowisko i wersje pakietów
 
-**1. Struktura i wspólny układ**
-- *Czym różnią się page.tsx i layout.tsx?* `page.tsx` reprezentuje unikalną
-  zawartość (UI) konkretnej trasy (URL). `layout.tsx` to współdzielony szablon
-  strony wokół stron (strony są renderowane jako `children`). Layout zachowuje
-  swój stan i nie ulega przerenderowaniu przy zmianie podstron.
-- *Czy do publicznej strony potrzeba osobnego layoutu?* Niekoniecznie. Root
-  layout (`app/layout.tsx`) obejmuje całą aplikację. Jeśli dana sekcja wymaga
-  dodatkowych powtarzalnych elementów, można tam dodać zagnieżdżony layout.
-- *Co w nawigacji przez Link pozostaje wspólne?* Komponenty zdefiniowane w
-  layoucie (nagłówek, stopka, nawigacja) pozostają współdzielone; przeładowaniu
-  ulega tylko część zawarta w `children`.
+* **Node.js:** v24.x LTS
+* **Next.js:** 16.3.8 (App Router, Turbopack)
+* **Baza danych:** PostgreSQL 17 (`postgres:17` via Docker Compose)
+* **Prisma ORM:** 7.10.1 (`prisma`, `@prisma/client`, `@prisma/adapter-pg`)
+* **Uwierzytelnianie:** Better Auth 1.7.7 (`better-auth`, `@better-auth/prisma-adapter`, `auth`)
+* **Sterownik bazy:** `pg@8.23.1`, `@types/pg@8.23.1`
+* **Testy:** `vitest@5.0.3`
+* **Style:** Tailwind CSS v4
 
-**2. Granica serwer-klient**
-- *Gdzie wykonuje się funkcja repozytorium?* Po stronie serwera aplikacji w
-  Node.js (dzięki użyciu dyrektywy `server-only`).
-- *Jakie dane trafiają do przeglądarki?* Do przeglądarki trafia jedynie
-  wygenerowany na serwerze gotowy kod HTML z danymi wstrzykniętymi w strukturę
-  DOM. Przeglądarka "nie widzi" pełnej zawartości JSON, a jedynie to, co strona
-  renderuje w tagach.
-- *Dlaczego import całego JSON do komponentu klienta zmienia architekturę?*
-  Importując JSON po stronie klienta, zmuszamy przeglądarkę do pobrania całej
-  "bazy danych" do pamięci (w paczce JS), co niszczy wydajność i naraża na
-  wyciek wrażliwych danych.
-- *Czy "use client" wyklucza początkowe renderowanie HTML na serwerze?* Nie.
-  Komponenty klienckie również przechodzą początkowy proces prerenderingu SSR
-  (Server-Side Rendering), gdzie wysyłany jest statyczny HTML dla szybszego
-  wczytania, a następnie na kliencie są "hydrowane" (podłączana jest
-  interaktywność i event listenery).
+---
 
-**3. Brak danych i awaria**
-- *Dlaczego brak funkcjonalności nie jest awarią?* Koszyk bez logiki biznesowej
-  to po prostu statyczny ekran informacyjny (zaplanowany stan systemu), podczas
-  gdy awaria to nagły błąd wykonywania kodu (np. błąd parsowania JSON).
-- *Czy granica error.tsx przechwytuje błąd layoutu w tym samym segmencie?* Nie.
-  Plik `error.tsx` opakowuje plik `page.tsx` (i zagnieżdżone elementy), ale nie
-  przechwytuje błędów wyrzucanych przez `layout.tsx` leżący na tym samym
-  poziomie katalogu. Błąd z layoutu chwyta globalny plik błędu poziom wyżej.
-- *Dlaczego widok "nie znaleziono" nie zawsze oznacza HTTP 404 w odpowiedzi
-  strumieniowej?* Jeśli występuje renderowanie strumieniowe (Streaming) i błąd
-  wystąpi po tym, jak serwer wysłał już nagłówek statusu HTTP 200 OK z ramką
-  dokumentu, nie można "cofnąć" nagłówka by wstawić HTTP 404, więc UI pokazuje
-  brak strony mimo odpowiedzi statusowej 200.
+## 2. Instrukcja uruchomienia projektu
 
-## Źródła danych i zasobów
-Zdjęcia produktów umieszczone w katalogu `public/images/products/` pochodzą z serwisu Pexels.
+### Krok 1: Klonowanie i instalacja zależności
+```bash
+npm ci
+```
 
-**Źródła (autorzy zdjęć):**
-- Obraz karty graficznej (`gpu.webp`) - autor: Sergei Starostin
-- Obraz procesora (`cpu.webp`) - autor: Rogeer Marques
-- Obraz pamięci RAM (`ram.webp`) - autor: Andrey Matveev
-- Obraz dysku (`disk.webp`) - autor: Azamat Esenaliev
+### Krok 2: Konfiguracja zmiennych środowiskowych
+Skopiuj plik `.env.example` do `.env`:
+```bash
+cp .env.example .env
+```
+W pliku `.env` skonfiguruj zmienne:
+* `DATABASE_URL`: URL połączenia PostgreSQL (np. `postgresql://root:rootpassword@localhost:5432/computershop?schema=public`)
+* `BETTER_AUTH_URL`: `http://localhost:3000`
+* `BETTER_AUTH_SECRET`: Losowy ciąg znaków min. 32 znaki
+* `GITHUB_CLIENT_ID` i `GITHUB_CLIENT_SECRET`: Dane zarejestrowanej aplikacji OAuth na GitHubie
 
-**Prawo wykorzystania:** 
-Wszystkie powyższe zdjęcia udostępniane są na licencji Pexels, co oznacza, że są w pełni darmowe do użytku osobistego i niekomercyjnego.
+### Krok 3: Uruchomienie bazy danych w Dockerze
+```bash
+docker compose up -d --wait
+```
+Kontener `postgres` uruchomi się lokalnie na porcie `127.0.0.1:5432` z trwałym wolumenem `pgdata` oraz healthcheckiem `pg_isready`.
 
+### Krok 4: Zastosowanie migracji i powtarzalnego seeda
+```bash
+npx --no-install prisma migrate deploy
+npx --no-install prisma db seed
+```
 
-## Lab 07 - Trasy dynamiczne i filtry w Next.js
+### Krok 5: Uruchomienie aplikacji
+* **Wersja deweloperska:**
+  ```bash
+  npm run dev
+  ```
+* **Wersja produkcyjna:**
+  ```bash
+  npm run build
+  npm run start
+  ```
 
-### Odpowiedzi na pytania "Do wyjaśnienia"
-1. **Czym różnią się błędny format ID, brak produktu i awaria?** Błędny format
-   (np. `12abc`) narusza kontrakt walidacyjny (odsyłamy 404 bez pytania bazy).
-   Brak produktu oznacza poprawne logicznie ID, którego baza nie znalazła.
-   Awaria to nieoczekiwany wyjątek (np. błąd połączenia), który musi wyrzucić
-   status 500 lub obsługę w `error.tsx`, aby nie udawać, że produkt celowo
-   zniknął z oferty.
-2. **Dlaczego folder [id] nie oznacza, że strona zawsze renderuje się przy
-   żądaniu?** Z użyciem `generateStaticParams` możemy wymusić prerenderowanie
-   stron w momencie kompilacji (SSG), co udowodniono w Rozszerzeniu 4. 
-3. **Dlaczego walidujemy adres mimo kontrolek ograniczających wybór?** URL jest
-   zewnętrznym interfejsem aplikacji (API). Użytkownik może ręcznie edytować
-   URL, wkleić stary link lub podać złośliwe parametry, pomijając całkowicie
-   nasze kontrolki.
-4. **Dlaczego filtr w useState nie odtwarza widoku z udostępnionego linku?**
-   `useState` żyje tylko w pamięci aktualnej sesji przeglądarki. Wysłany link
-   nie niesie ze sobą stanu pamięci RAM z innego komputera, dlatego jedynym
-   źródłem prawdy do odtwarzania (tzw. Deep Linking) musi być URL.
-5. **Co zachowuje nawigacja przez Link, a co pełne przeładowanie?** Link
-   zachowuje strukturę React (Layouty), stany (np. Context, useState) oraz nie
-   pobiera od zera skryptów z serwera (robi łagodne przejście). Pełne
-   przeładowanie odświeża całą kartę niszcząc lokalne stany.
-6. **Dlaczego komponent z `use client` otrzymuje początkowy HTML z serwera?**
-   Next.js dokonuje prerenderowania SSR także dla komponentów klienckich, aby
-   użytkownik szybciej zobaczył zawartość przed pobraniem JavaScriptu.
-   Następnie zachodzi zjawisko "hydracji".
+---
 
-### Rozszerzenia (WSZYSTKIE)
-- **Parallel Routes (@recommended):** Dodano boczny panel 3 produktów. Zdefiniowano pliki `default.tsx`, ponieważ przy pełnym odświeżeniu i zmianie URL na szczegóły produktu Next.js musi wiedzieć, co renderować w nieaktywnych slotach.
-- **Intercepting Routes (@modal):** Kliknięcie zdjęcia produktu wyzwala ścieżkę przechwytującą `(..)img/[id]`, ładując zoptymalizowany podgląd zdjęcia bez gubienia tła. Odświeżenie przenosi nas na samodzielną podstronę ze zdjęciem.
-- **Dynamic Catch-all (`[[...slug]]`):** W sekcji `/catalog` zaprezentowano różnicę dla tablicy ścieżek URL, reagując dynamicznie na wejścia np. `/catalog/gpu/25`.
-- **generateStaticParams:** Wygenerowano prerenderowany HTML w trakcie builda dla identyfikatorów 1, 2, 3.
-- **Tailwind CSS v4:** Wdrożono nową konfigurację i ostylowano katalog nowymi klasami Tailwind, zachowując bezwzględnie zasady dostępności, layoutu i RWD.
+## 3. Konfiguracja GitHub OAuth
 
-## Laboratorium 08 - PostgreSQL i Prisma
+Aplikacja zarejestrowana jest jako **GitHub OAuth App** w ustawieniach deweloperskich (`GitHub -> Settings -> Developer settings -> OAuth Apps`):
+* **Application name:** `Computer Shop 2026`
+* **Homepage URL:** `http://localhost:3000`
+* **Authorization callback URL:** `http://localhost:3000/api/auth/callback/github`
+* **Uprawnienia (scopes):** `user:email` (zapewnia bezpieczny odczyt zweryfikowanego adresu e-mail bez dostępu do repozytoriów kodu).
 
-### Pytania do wyjaśnienia (Sekcja 3, 4, 6 i 7)
+---
+
+## 4. Testy i skrypty weryfikacyjne
+
+Wszystkie testy i scenariusze weryfikacyjne uruchamiane są poleceniami:
+
+```bash
+# Uruchomienie pełnego zestawu testów integracyjnych (Vitest - 31 testów)
+npm run test
+
+# Sprawdzenie poprawności typów i reguł ESLint
+npm run lint
+
+# [Lab 08] Test trwałości i ograniczeń zmiany stanu magazynowego (CHECK amount >= 0)
+npm run stock:update
+
+# [Lab 08 / Rozszerzenie 4] Test atomowej rezerwacji stanu i wyścigu o ostatnią sztukę
+npm run test:concurrent
+
+# [Lab 08 / Rozszerzenie 3] Benchmark indeksu @@index([categoryId, amount]) via EXPLAIN (ANALYZE, BUFFERS)
+npm run benchmark
+
+# [Lab 09 / Rozszerzenie 3] Test unieważniania sesji na wielu urządzeniach
+npx tsx scripts/multi-device-sessions.ts
+
+# [Lab 09 / Rozszerzenie 4] Test zapisu współbieżnego na koszyku i polityki konfliktów
+npx tsx scripts/concurrent-cart.ts
+
+# [Lab 09 / Rozszerzenie 2] Test izolacji zamówień i snapshotu cen w historii
+npx tsx scripts/order-history-test.ts
+```
+
+---
+
+## 5. Kontrakt operacji i kontrola dostępu (Lab 09)
+
+### Ustalanie właściciela z sesji (Single Source of Truth)
+Wszystkie operacje chronione odczytują tożsamość użytkownika bezpośrednio z nagłówków żądania na serwerze za pomocą funkcji pomocniczej:
+* **Plik:** [`lib/auth.ts`](file:///c:/GitHub/backend/computer-shop-2026dm/lib/auth.ts)
+  ```ts
+  export async function getCurrentSession() {
+    return auth.api.getSession({
+      headers: await headers(),
+    });
+  }
+  ```
+* Żadne żądanie z przeglądarki (formularz, query params, body) **nie przyjmuje identyfikatora właściciela koszyka (`userId`)**. Identyfikator jest pobierany wyłącznie z `session.user.id`.
+
+### Kontrakt operacji koszyka ([`lib/cart.ts`](file:///c:/GitHub/backend/computer-shop-2026dm/lib/cart.ts)):
+* `getCartForUser(userId)`: Zwraca koszyk zalogowanego użytkownika; brak rekordu daje pusty koszyk i sumę zero.
+* `addProductToCart(userId, productId)`: Atomowe dodanie 1 sztuki. Zabezpiecza przed przekroczeniem limitu 99 sztuk oraz dostępnego stanu magazynowego.
+* `setCartItemQuantity(userId, itemId, quantity)`: Modyfikacja ilości w zakresie 1–99 z jednoczesną weryfikacją `cart.userId == session.user.id`.
+* `removeCartItem(userId, itemId)`: Bezpieczne usunięcie wyłącznie własnej pozycji:
+  ```ts
+  await prisma.cartItem.deleteMany({
+    where: { id: itemId, cart: { userId } },
+  });
+  ```
+  Próba podania ID pozycji innego użytkownika zwraca bezpieczną odmowę (`count === 0`) bez ujawniania danych obcego koszyka.
+
+---
+
+## 6. Zrealizowane Rozszerzenia
+
+### Rozszerzenie 1: Checkout transakcyjny ([`lib/order.ts`](file:///c:/GitHub/backend/computer-shop-2026dm/lib/order.ts))
+* Realizacja zamówienia w ramach jednej transakcji ACID:
+  1. Sprawdzenie sesji i pobranie pozycji koszyka.
+  2. Weryfikacja idempotencji na podstawie `idempotencyKey` – ponowienie tego samego żądania zwraca istniejące zamówienie i nie dubluje operacji.
+  3. Atomowe zmniejszenie stanu magazynowego produktów (`WHERE id = ... AND amount >= quantity`). W przypadku braku towaru transakcja zostaje wycofana (rollback).
+  4. Utworzenie rekordu `Order` oraz pozycji `OrderItem` z **pełnym snapshotem** (zamrożenie nazwy, kodu oraz ceny w groszach z chwili zakupu).
+  5. Całkowite wyczyszczenie koszyka użytkownika.
+
+### Rozszerzenie 2: Historia użytkownika ([`app/order-history/page.tsx`](file:///c:/GitHub/backend/computer-shop-2026dm/app/order-history/page.tsx))
+* Dostęp do historii mają wyłącznie zalogowani użytkownicy (`where: { userId: session.user.id }`).
+* Sprawdzono odporność na manipulację parametrami: Użytkownik A nie ma możliwości podejrzenia ani pobrania zamówień Użytkownika B.
+* Przetestowano zachowanie relacji po zmianie ceny produktu w katalogu oraz po usunięciu produktu (`onDelete: SetNull`) – zamówienie w pełni zachowuje snapshot danych historycznych.
+
+### Rozszerzenie 3: Sesje na wielu urządzeniach ([`scripts/multi-device-sessions.ts`](file:///c:/GitHub/backend/computer-shop-2026dm/scripts/multi-device-sessions.ts))
+* Przetestowano wylogowanie z pojedynczego urządzenia (usunięcie konkretnego tokena sesji z tabeli `Session`) vs globalne unieważnienie wszystkich sesji danego użytkownika (`deleteMany({ where: { userId } })`).
+* Wyjaśniono wpływ opcji `session.cookieCache.enabled: false` na natychmiastowe unieważnienie sesji w PostgreSQL bez opóźnień wynikających z pamięci podręcznej serwera.
+
+### Rozszerzenie 4: Zapis współbieżny koszyka ([`scripts/concurrent-cart.ts`](file:///c:/GitHub/backend/computer-shop-2026dm/scripts/concurrent-cart.ts))
+* Przetestowano równoległe żądania `addProduct`, wyścigi pomiędzy `setQuantity` a `setQuantity` oraz równoczesną modyfikację i usunięcie pozycji (`setQuantity` vs `removeItem`).
+* Zdefiniowano i zaimplementowano politykę obsługi konfliktów unikalności (`P2002` na tworzeniu koszyka/pozycji) oraz brakujących rekordów (`P2025` przy współbieżnym usunięciu).
+
+---
+
+## 7. Odpowiedzi na pytania architektoniczne
+
+### Laboratorium 08: PostgreSQL i Prisma
+
 1. **Czym różnią się kontener, wolumen i baza? Dlaczego localhost ma inne znaczenie?**
-   Kontener to izolowane środowisko uruchomieniowe (proces). Wolumen to trwała przestrzeń dyskowa, na której kontener zapisuje dane (aby przetrwały restart). Baza to usługa (np. PostgreSQL) uruchomiona w kontenerze operująca na tych plikach. `localhost` wywoływane w systemie gospodarza (hoście) uderza w zmapowany port Dockerowy, a wewnątrz innej sieci Dockerowej `localhost` to wnętrze tylko i wyłącznie własnego kontenera (dlatego inne kontenery komunikują się po nazwie serwisu np. `postgres`).
-2. **Co robi konfiguracja CLI, generator i adapter uruchomieniowy?**
-   Konfiguracja CLI wskazuje ścieżkę do bazy i folderów, aby `npx prisma` wiedziało, skąd czytać schematy. Generator kompiluje pliki typu TypeScript na podstawie modeli, a adapter (tu `@prisma/adapter-pg`) tłumaczy zapytania Prisma na odpowiednie komendy czystego klienta bazy danych (pg). Typy wygenerowanego klienta gwarantują poprawność obiektów w TS, ale walidacja SQL (np. check dodatniej ceny) broni warstwy fizycznej przed obejściem typowania na produkcji.
-3. **Czym różnią się migracja, generowanie klienta i seed?**
-   Migracja zmienia fizycznie strukturę tabel w SQL, generowanie klienta uaktualnia podpowiedzi składni (typy) w TypeScript po stronie kodu, a seed to skrypt ładujący dane początkowe. Powtarzalność seeda (upsert) gwarantuje, że podwójne odpalenie nie zdubluje wierszy, a zastosowanie transakcji chroni przed załadowaniem do połowy po zerwaniu procesu.
-4. **Co po zmianie adaptera pozostaje częścią kontraktu repozytorium?**
-   Pojęcia takie jak "stan ujemny to niedostępny" oraz mapowanie kluczy asynchronicznych Promise. Zmienia się wewnętrzne filtrowanie z JS-a w pamięci RAM na klauzule `where` odsyłane do bazy danych. Poprawny zapis do bazy nie renderuje zmian w przeglądarce natychmiast, ponieważ Next.js agresywnie cache'uje zapytania. Funkcja `connection()` w Next.js wymusza odczekanie i odczyt z bazy (rezygnując z cache).
+   * *Kontener:* Odizolowany proces systemu operacyjnego uruchamiający silnik bazy.
+   * *Wolumen:* Trwały katalog na dysku gospodarza (hosta), podmontowany do kontenera (`/var/lib/postgresql/data`), który zachowuje pliki bazy po zatrzymaniu lub zniszczeniu kontenera.
+   * *Baza danych:* Logiczny zbiór schematów, tabel i danych zarządzany przez proces PostgreSQL.
+   * *Localhost:* Na hoście `localhost` wskazuje na interfejs pętli zwrotnej komputera dewelopera (port 5432 mapowany z Dockera). Wewnątrz sieci kontenerów `localhost` oznacza wnętrze danego kontenera, dlatego aplikacja w innym kontenerze musi łączyć się po nazwie usługi (np. `postgres:5432`).
 
-### Rozszerzenia (Wszystkie)
-- **Model koszyka (Better Auth):** Dodano `User`, `Cart` i `CartItem`. Skonfigurowano powiązania `Cascade` i `Restrict` oraz dodano `CHECK (quantity BETWEEN 1 AND 99)` w migracji SQL. Zrealizowano również dodanie fikcyjnego konta przez Prisma seed.
-- **Historia zamówień:** Dodano modele `Order` oraz `OrderItem` (wzór snapshotu) przypisane do relacji z `User`. Zrobiono `SetNull` chroniący zamówienia po usunięciu produktu. Nałożono ograniczenia dodatniej ilości i ceny z zabezpieczeniem historycznym w groszach.
-- **Indeksy i zapytania (EXPLAIN):** Utworzono kompozytowy index `@@index([categoryId, amount])` w Prismie ułatwiający filtrowanie. Narzędzie `EXPLAIN ANALYZE` po potwierdzeniu z logu Dockerowego pokazuje skokową poprawę wyliczania rzędów przy większych pulach.
-- **Zapis współbieżny:** Utworzono skrypt `scripts/concurrent-test.ts` wywołujący dwie konkurujące ze sobą aktualizacje ilości towaru (Update w atomowej konstrukcji `SET amount = amount - 1 ... AND amount > 0`). Dokładnie jedno z wywołań blokuje transakcję w przypadku ostatniej sztuki asortymentu chroniąc tabelę SQL.
+2. **Co potwierdza test gotowości (healthcheck `pg_isready`), a czego jeszcze nie sprawdza?**
+   Potwierdza, że proces serwera PostgreSQL uruchomił się, otworzył gniazdo sieciowe i akceptuje połączenia TCP. Nie sprawdza jednak, czy migracje zostały zaaplikowane, czy tabele istnieją, ani czy aplikacja posiada poprawne uprawnienia do zapisu.
+
+3. **Co robi konfiguracja CLI, generator i adapter uruchomieniowy?**
+   * *Konfiguracja CLI (`prisma.config.ts`):* Wskazuje ścieżki do schematu, migracji i adresu bazy dla narzędzi Prisma CLI.
+   * *Generator (`generator client`):* Kompiluje modele schematu do kodu TypeScript (`lib/generated/prisma/client.ts`).
+   * *Adapter uruchomieniowy (`@prisma/adapter-pg`):* Przekazuje zapytania SQL generowane przez Prisma Client bezpośrednio do puli połączeń silnika Node PostgreSQL (`pg.Pool`), zapewniając kompatybilność z driver adapterami Prisma 7.
+
+4. **Dlaczego typy klienta nie potwierdzają poprawności danych otrzymanych od użytkownika?**
+   Typy TypeScript istnieją wyłącznie w fazie kompilacji i są usuwane w procesie transpilacji do JavaScriptu. Dane przesyłane z zewnątrz przez HTTP mogą przybrać dowolny format, dlatego konieczna jest walidacja w runtime (np. walidatory w TypeScript) oraz twarde ograniczenia SQL CHECK w bazie danych.
+
+5. **Jak sprawdzisz, że moduł bazy nie trafia do przeglądarki?**
+   Wykorzystano dyrektywę `import "server-only";` w plikach `lib/db.ts` i `lib/repository.ts`. Przypadkowa próba zaimportowania modułu po stronie klienta generuje błąd kompilacji bundlera Next.js. Dodatkowo weryfikuje to analiza pakietu produkcyjnego (`next build`).
+
+6. **Dlaczego transakcja importu w seedzie nie zastępuje walidacji całego pliku?**
+   Transakcja gwarantuje atomowość (wszystko albo nic), ale błąd napotkany na 99. rekordzie wycofuje całą transakcję po wykonaniu kosztownych operacji dyskowych. Walidacja całego pliku w pamięci RAM przed rozpoczęciem transakcji natychmiast odrzuca błędny plik bez obciążania serwera bazy danych.
+
+7. **Różnica między `prisma migrate dev` a `prisma migrate deploy`:**
+   * `migrate dev`: Narzędzie deweloperskie – porównuje schemat, generuje nowe pliki migracji SQL i stosuje je do lokalnej bazy.
+   * `migrate deploy`: Narzędzie produkcyjne (CI/CD) – aplikuje wyłącznie wcześniej zapisane, zatwierdzone w repozytorium pliki migracji bez modyfikowania schematu ani pytania o interakcję.
+
+8. **Collation `COLLATE "C"` a sortowanie nazw:**
+   Domyślna lokalizacja PostgreSQL może sortować znaki diakrytyczne zależnie od locale systemu. Ustawienie `COLLATE "C"` na kolumnie `nameSortKey` wymusza czyste, bajtowe porównywanie kodów znaków UTF-8, co gwarantuje pełną zgodność z `Buffer.compare` i algorytmem z Lab 06.
+
+---
+
+### Laboratorium 09: Uwierzytelnianie i własny koszyk
+
+1. **Co potwierdza dostawca OAuth (GitHub), a co musi sprawdzić sklep?**
+   GitHub potwierdza jedynie tożsamość użytkownika (uwierzytelnienie – "ten użytkownik posiada konto GitHub o danym adresie e-mail"). Sklep musi przeprowadzić autoryzację – sprawdzić, czy dany użytkownik istnieje w bazie sklepu, powiązać go z lokalnym kontem `User`, utworzyć token sesji w tabeli `Session` oraz kontrolować uprawnienia do zasobów (koszyka i zamówień).
+
+2. **Czym różnią się identyfikator konta GitHub, ID użytkownika w bazie i token sesji?**
+   * *GitHub Account ID:* Zewnętrzny identyfikator dostawcy (zapisany w tabeli `Account.accountId`).
+   * *ID użytkownika (`User.id`):* Wewnętrzny, trwały identyfikator w bazie sklepu, do którego przypisane są koszyki i zamówienia.
+   * *Token sesji (`Session.token`):* Krótkotrwały, losowy ciąg znaków o wysokiej entropii zapisany w ciasteczku przeglądarki, weryfikowany w bazie przy każdym żądaniu.
+
+3. **Dlaczego poprawny callback OAuth nie wystarcza do autoryzowania koszyka?**
+   Callback OAuth to tylko jednorazowy punkt wymiany kodu na token dostawcy. Autoryzacja operacji na koszyku wymaga weryfikacji tożsamości właściciela przy każdym żądaniu HTTP na podstawie aktywnej sesji pobranej z bazy PostgreSQL.
+
+4. **Dlaczego use server nie oznacza automatycznie autoryzacji?**
+   Dyrektywa `'use server'` oznacza jedynie, że dana funkcja jest eksponowana jako endpoint RPC dostępny przez HTTP. Bez jawnego wywołania `getCurrentSession()` i sprawdzenia uprawnień wewnątrz funkcji, Server Action jest całkowicie publicznym endpointem podatnym na ataki.
+
+5. **Jak użytkownik może wywołać akcję mimo ukrytego przycisku w interfejsie?**
+   Ukrycie przycisku w HTML/CSS to jedynie detal wizualny UI. Każdy użytkownik może podejrzeć zapytanie sieciowe w DevTools lub wysłać żądanie HTTP POST za pomocą cURL, konsoli przeglądarki lub narzędzia Postman, wywołując Server Action bezpośrednio.
+
+6. **Co się stanie przy podmianie `itemId` na pozycję innej osoby?**
+   Dzięki klauzuli `where: { id: itemId, cart: { userId: session.user.id } }`, baza danych sprawdza jednocześnie identyfikator pozycji oraz powiązanie z koszykiem zalogowanego użytkownika. Podmiana `itemId` skutkuje brakiem dopasowania rekordu (`count === 0`) i bezpieczną odmową wykonania operacji bez wycieku danych.
+
+7. **Dlaczego limit ilości w koszyku nie zapewnia dostępności podczas zakupu?**
+   Koszyk nie rezerwuje towaru w magazynie. Pomiędzy dodaniem towaru do koszyka a kliknięciem "Złóż zamówienie" inny klient może wykupić ostatnie sztuki. Dlatego rzeczywista rezerwacja i weryfikacja stanu następuje dopiero w transakcji checkoutu.
+
+8. **Dlaczego cena przesłana przez przeglądarkę nie jest wiarygodna?**
+   Użytkownik ma pełną kontrolę nad kodem działającym w przeglądarce i parametrami żądań HTTP. Mógłby zmodyfikować cenę produktu na 1 grosz. Dlatego ceny i sumy są pobierane i obliczane wyłącznie na serwerze z tabeli `Product`.

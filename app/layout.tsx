@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import Navigation from '@/components/Navigation';
-import LocalState from '@/components/LocalState';
+import AuthStatus from '@/components/AuthStatus';
 import './global.css';
 
 export const metadata: Metadata = {
@@ -18,7 +18,7 @@ export default function RootLayout({
     return (
         <html lang="pl">
             <body>
-                <header className="p-4 border-b flex items-center gap-8">
+                <header className="p-4 border-b flex items-center gap-8 flex-wrap">
                     <Link href="/">
                         <Image
                             src="/politechnika-krakowska-logo.svg"
@@ -31,7 +31,7 @@ export default function RootLayout({
                     </Link>
 
                     <Navigation />
-                    <LocalState />
+                    <AuthStatus />
                 </header>
                 <main style={{ padding: '2rem' }}>
                     {children}
