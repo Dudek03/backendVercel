@@ -8,9 +8,13 @@ if (!process.env.BETTER_AUTH_SECRET) {
   throw new Error("Brak zmiennej środowiskowej BETTER_AUTH_SECRET");
 }
 
+const baseURL = process.env.BETTER_AUTH_URL || "http://localhost:3000";
+
 export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
-  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
+  baseURL,
+  // Zaufane źródła ograniczone wyłącznie do stabilnej domeny produkcyjnej (Lab 10)
+  trustedOrigins: [baseURL],
   database: prismaAdapter(prisma, {
     provider: "postgresql",
   }),

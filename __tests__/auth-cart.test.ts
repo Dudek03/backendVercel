@@ -69,6 +69,9 @@ describe("Scenariusze odbioru sesji i autoryzacji koszyka (Lab 09 - Tabela 8.1)"
     await prisma.order.deleteMany({
       where: { userId: { in: [USER_A_ID, USER_B_ID] } },
     });
+    await prisma.session.deleteMany({
+      where: { userId: { in: [USER_A_ID, USER_B_ID] } },
+    });
     await prisma.user.deleteMany({
       where: { id: { in: [USER_A_ID, USER_B_ID] } },
     });
@@ -235,5 +238,46 @@ describe("Scenariusze odbioru sesji i autoryzacji koszyka (Lab 09 - Tabela 8.1)"
     // Alice próbuje odczytać zamówienie Boba
     const stolenOrder = await getUserOrderById(USER_A_ID, bobCheckout.orderId!);
     expect(stolenOrder).toBeNull();
+  });
+
+  it("[Rozszerzenie 3] Wylogowanie ze wszystkich urządzeń unieważnia sesje w bazie", async () => {
+    // 1. Utworzenie dwóch sesji dla użytkownika Alice (np. Desktop i Mobile)
+    const token1 = "test-token-device-alice-1";
+    const token2 = "test-token-device-alice-2";
+
+    await prisma.session.create({
+      data: {
+        id: "sess-test-alice-1",
+        userId: USER_A_ID,
+        token: token1,
+        expiresAt: new Date(Date.now() + 3600000),
+      },
+    });
+
+    await prisma.session.create({
+      data: {
+        id: "sess-test-alice-2",
+        userId: USER_A_ID,
+        token: token2,
+        expiresAt: new Date(Date.now() + 3600000),
+      },
+    });
+
+    const sessionsBefore = await prisma.session.findMany({
+      where: { userId: USER_A_ID },
+    });
+    expect(sessionsBefore.length).toBe(2);
+
+    // 2. Globalne unieważnienie wszystkich sesji Alice
+    const deleteResult = await prisma.session.deleteMany({
+      where: { userId: USER_A_ID },
+    });
+    expect(deleteResult.count).toBe(2);
+
+    // 3. Weryfikacja: brak aktywnych sesji w bazie danych
+    const sessionsAfter = await prisma.session.findMany({
+      where: { userId: USER_A_ID },
+    });
+    expect(sessionsAfter.length).toBe(0);
   });
 });

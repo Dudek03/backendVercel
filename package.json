@@ -3,15 +3,25 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "migrate:deploy": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
     "stock:update": "tsx scripts/update-stock.ts",
     "test:concurrent": "tsx scripts/concurrent-test.ts",
-    "benchmark": "tsx scripts/benchmark-index.ts"
+    "test:sessions": "tsx scripts/multi-device-sessions.ts",
+    "test:isolation": "tsx scripts/test-environment-isolation.ts",
+    "benchmark": "tsx scripts/benchmark-index.ts",
+    "perf:test": "tsx scripts/performance-test.ts",
+    "backup:restore": "tsx scripts/backup-restore.ts",
+    "e2e:test": "tsx scripts/e2e-cart-test.ts"
   },
   "dependencies": {
     "@better-auth/prisma-adapter": "1.7.14",
